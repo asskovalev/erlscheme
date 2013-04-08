@@ -27,6 +27,19 @@ s_let(Env, [{list, Bindings}, Body]) ->
     NewEnv = extend_env(Env, Evaled),
     eval(NewEnv, Body).
 
+s_let_star(Env, [{list, Bindings}, Body]) ->
+    NewEnv = lists:foldl(fun ({list, [{symbol, Name}, Expr]}, EnvAcc) ->
+                                 Evaled = eval(EnvAcc, Expr),
+                                 NewEnvAcc = extend_env(EnvAcc, {Name, Evaled}),
+                                 NewEnvAcc
+                         end, 
+                         Env,
+                         Bindings),
+    eval(NewEnv, Body).
+
+s_let_rec(Env, [{list, Bindings}, Body]) ->
+    todo.
+
 s_lambda(_Env, [{list, Parameters}, Body]) ->
     Closure = fun(Env, Args) ->
                       Bindings = lists:zipwith(
@@ -43,8 +56,11 @@ env() ->
       {"-", fn(fun minus/1)},
       {"if", special(fun s_if/2)},
       {"let", special(fun s_let/2)},
+      {"let*", special(fun s_let_star/2)},
       {"lambda", special(fun s_lambda/2)}]].
 
+extend_env(Env, Binding={_Name, _Value}) ->
+    [[Binding]|Env];
 extend_env(Env, Bindings) ->
     [Bindings|Env].
 
