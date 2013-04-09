@@ -1,5 +1,5 @@
 -module(main).
--export([run/1, eval/2, ast/1]).
+-export([run/1, eval/2, eval/1, ast/1]).
 
 eval(Expr) ->
     Env = env:init(),

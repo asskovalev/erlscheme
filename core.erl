@@ -14,7 +14,7 @@
 -define(signature(Name, Params), ?lst([?sym(Name)|Params])).
 
 -define(eval(Env, Expr), main:eval(Env, Expr)).
--define(bind(Name, Env, Expr), {Name, ?eval(Env, Expr)}).
+-define(bind(Name, Expr), {Name, Expr}).
 
 
 fn(Fn) -> {function, Fn}.
@@ -48,7 +48,7 @@ s_if(Env, [Cond, True, False]) ->
 
 s_let(Env, [?lst(Bindings), Body]) ->
     Map = fun (?binding(Name, Expr)) ->
-                  ?bind(Name, Env, Expr)
+                  ?bind(Name, ?eval(Env, Expr))
           end,
     Evaled = lists:map(Map, Bindings),
     NewEnv = env:extend(Env, Evaled),
@@ -56,7 +56,7 @@ s_let(Env, [?lst(Bindings), Body]) ->
 
 s_let_star(Env, [?lst(Bindings), Body]) ->
     Fold = fun (?binding(Name, Expr), Acc) -> 
-                   env:extend(Acc, ?bind(Name, Acc, Expr))
+                   env:extend(Acc, ?bind(Name, ?eval(Acc, Expr)))
            end,
     NewEnv = lists:foldl(Fold, Env, Bindings),
     ?eval(NewEnv, Body).
@@ -64,29 +64,55 @@ s_let_star(Env, [?lst(Bindings), Body]) ->
 s_lambda(_Env, [?lst(Params), Body]) ->
     make_lambda(Params, Body).
 
-s_quote(Env, [?lst(Body)]) ->
-    Iter = fun (?unquote(Unq)) -> ?eval(Env, Unq);
-               (Item) -> Item
-           end,
-    ?lst(lists:map(Iter, Body));
-
-s_quote(_Env, [Body]) -> Body.
-                   
-
 s_define(Env, [?signature(Name, Params), Body]) ->
     Closure = make_lambda(Params, Body),
-    NewEnv = env:extend(Env, {Name, Closure}),
+    NewEnv = env:extend(Env, ?bind(Name, Closure)),
+    definition(NewEnv);
+
+s_define(Env, [?sym(Name), Body]) ->
+    Value = ?eval(Env, Body),
+    NewEnv = env:extend(Env, ?bind(Name, Value)),
     definition(NewEnv).
 
 make_lambda(Params, Body) ->
     Closure = fun(Env, Args) ->
                       Bindings = lists:zipwith(
                                    fun (?sym(Name), Expr) -> 
-                                           ?bind(Name, Env, Expr) 
+                                           ?bind(Name, ?eval(Env, Expr)) 
                                    end,
                                    Params, 
                                    Args),
                       NewEnv = env:extend(Env, Bindings),
                       ?eval(NewEnv, Body)
+              end,
+    special(Closure).
+
+s_quote(Env, [?lst(Body)]) ->
+    ?lst(lists:map(fun (It) -> unquot(Env, It) end, Body));
+s_quote(Env, [Body]) -> unquot(Env, Body).
+
+unquot(Env, ?unquote([Unq])) -> 
+    ?eval(Env, Unq);
+unquot(Env, ?unquote(Unq)) -> 
+    ?eval(Env, Unq);
+unquot(Env, ?lst(List)) -> 
+    ?lst([unquot(Env, Item) || Item <- List]);
+unquot(_Env, Other)   ->
+    Other.
+
+   
+
+s_macro(_Env, [?lst(Params), Body]) ->
+    Closure = fun(Env, Args) ->
+                      Bindings = lists:zipwith(
+                                   fun (?sym(Name), Expr) -> 
+                                           ?bind(Name, Expr) 
+                                   end,
+                                   Params, 
+                                   Args),
+                      NewEnv = env:extend(Env, Bindings),
+                      Expanded = ?eval(NewEnv, Body),
+                      io:format("expanded: ~p~n", [Expanded]),
+                      ?eval(Env, Expanded)
               end,
     special(Closure).

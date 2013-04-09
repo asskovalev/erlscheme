@@ -15,6 +15,7 @@ init() ->
             {"let",    core:special(fun core:s_let/2)},
             {"quote",  core:special(fun core:s_quote/2)},
             {"let*",   core:special(fun core:s_let_star/2)},
+            {"macro",  core:special(fun core:s_macro/2)},
             {"lambda", core:special(fun core:s_lambda/2)}]).
 
 extend(Env, Binding={_,_}) -> 
@@ -23,7 +24,7 @@ extend(Env, Bindings) ->
     [dict:from_list(Bindings)|Env].
 
 lookup(What, []) ->
-    {error, not_found, What};
+    throw({error, not_found, What});
 
 lookup(What, [Frame|Rest]) ->
     case lookup_frame(What, Frame) of
