@@ -13,6 +13,7 @@ init() ->
             {"define", core:special(fun core:s_define/2)},
             {"if",     core:special(fun core:s_if/2)},
             {"let",    core:special(fun core:s_let/2)},
+            {"quote",  core:special(fun core:s_quote/2)},
             {"let*",   core:special(fun core:s_let_star/2)},
             {"lambda", core:special(fun core:s_lambda/2)}]).
 

@@ -8,6 +8,7 @@
 
 -define(true,  ?sym("#t")).
 -define(false, ?sym("#f")).
+-define(unquote(Body), ?lst([?sym("unquote"), Body])).
 
 -define(binding(Name, Expr), ?lst([?sym(Name), Expr])).
 -define(signature(Name, Params), ?lst([?sym(Name)|Params])).
@@ -63,6 +64,14 @@ s_let_star(Env, [?lst(Bindings), Body]) ->
 s_lambda(_Env, [?lst(Params), Body]) ->
     make_lambda(Params, Body).
 
+s_quote(Env, [?lst(Body)]) ->
+    Iter = fun (?unquote(Unq)) -> ?eval(Env, Unq);
+               (Item) -> Item
+           end,
+    ?lst(lists:map(Iter, Body));
+
+s_quote(_Env, [Body]) -> Body.
+                   
 
 s_define(Env, [?signature(Name, Params), Body]) ->
     Closure = make_lambda(Params, Body),
